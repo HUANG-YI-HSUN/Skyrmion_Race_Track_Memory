@@ -1,0 +1,16 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^release$
+^NEWS\.md$
+^README\.md$
+^.*\.tar.gz$
+^cpp\_version$
+^\.github$
+^revdep$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^ranger\.Rcheck$
+^ranger.*\.tar\.gz$
+^ranger.*\.tgz$
+revdep/*
