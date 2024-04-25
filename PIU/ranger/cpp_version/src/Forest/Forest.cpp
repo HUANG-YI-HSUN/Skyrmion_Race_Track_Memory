@@ -311,12 +311,9 @@ void Forest::run(bool verbose, bool compute_oob_error) {
 
     // ------------------------------------------------------------------------------------------------------------------
     // skr.printsearchList() ;
-    skr.p_track_at.resize(skr.parallel_memory.size()) ;
-    for ( int i = 0 ; i < skr.parallel_memory.size() ; i++ ) 
-      skr.p_track_at[i] = 0 ;
     
     skr.parallel_prenode.resize( skr.parallel_memory.size() ) ;
-    skr.parallel_access_time.resize( skr.parallel_memory.size() )  ;
+    // skr.parallel_access_time.resize( skr.parallel_memory.size() )  ;
     cout << "Finding..." << endl ;
     for ( int i = 0 ; i < num_trees ; i++ ) { 
       for ( int j = 0 ; j < skr.parallel_searchList[i].size() ; j++ ) {
@@ -326,43 +323,38 @@ void Forest::run(bool verbose, bool compute_oob_error) {
         skr.shift_count = 0 ;
         skr.P_BacktoRoot(true) ;
       } // for
-      // parallel_prenode_access_time[scope].push_back(tree_shift*(ap_nums/num_threads)) ; No need to use temporarily.
       for ( int p = 0 ; p < skr.parallel_memory.size() ; p++ ) {
-        if ( skr.p_track_shift[p] != 0 && skr.p_track_at[p] != 0 ) {
+        if ( skr.p_track_shift[p] != 0 ) {
           skr.parallel_prenode[p].push_back(skr.p_track_shift[p]) ;
-          skr.parallel_access_time[p].push_back(skr.p_track_at[p]) ;
           skr.p_track_shift[p] = 0 ;
-          skr.p_track_at[p] = 0 ;
         } // if
       } // for
     } // for
 
     for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) {
-      // sort(parallel_prenode_access_time[i].begin(), parallel_prenode_access_time[i].end()) ;
       sort(skr.parallel_prenode[i].begin(), skr.parallel_prenode[i].end()) ;
-      sort(skr.parallel_access_time[i].begin(), skr.parallel_access_time[i].end()) ;
       sort(skr.ap_access_time[i].begin(), skr.ap_access_time[i].end()) ;
     } // for
 
-    long long int total_access_time = 0 ;
+    long long int total_access_time = 0, energy_total_access_time = 0 ;
     for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) {
+      for ( int j = 0 ; j < skr.ap_access_time[i].size() ; j++ )
+        energy_total_access_time+=skr.ap_access_time[i][j] ;
+
       total_access_time+=skr.ap_access_time[i][skr.ap_access_time[i].size()-1] ;
-      // for ( int j = 0 ; j < skr.ap_access_time[i].size() ; j++ )
-        // cout << skr.ap_access_time[i][j] << ", " ;
-      // cout << endl ;
-      if ( skr.parallel_prenode[i].size() > 0 ) {
+      
+      if ( skr.parallel_prenode[i].size() > 0 )
         skr.total_reading_shift_distance+=skr.parallel_prenode[i][skr.parallel_prenode[i].size()-1] ;
-        skr.parallel_access+=skr.parallel_access_time[i][skr.parallel_access_time[i].size()-1] ;
-      } // if
     } // for
     skr.BacktoRoot() ;
 
     long long int latency = ((long long int)total_access_time * 0.1) + ((long long int)skr.total_reading_shift_distance*0.5) ;
     cout << "Total track count: " << skr.parallel_memory.size() + skr.memory.size() << endl ;
-    cout << "Total access time: " << total_access_time << endl ;
+    cout << "Total access time: " << energy_total_access_time << endl ;
     cout << "Total reading shifting count: " << skr.total_reading_shift_distance << endl ;
     cout << "Reading latency: " << latency << endl ;
-    cout << "Space utilization: " << (double) skr.space / ((skr.parallel_memory.size() + skr.memory.size()) * 8192) << endl ;
+    cout << "Total energy consumption: " << energy_total_access_time * 2 + skr.total_reading_shift_distance * 20 << endl ;
+    cout << "Space utilization: " << (double) skr.space / ((skr.parallel_memory.size() + skr.memory.size()) * skr.word_nums * skr.ap_nums) << endl ;
 
     // cout << "-------------------------Print Race Track------------------------" << endl ;
     // Print() ;
@@ -716,15 +708,13 @@ void Forest::grow() {
     } // if
   } // for
 
-  skr.parallel_prenode_access_time.resize( skr.parallel_memory.size() ) ;
-
   skr.Parallel_Write(num_threads) ;
   skr.P_BacktoRoot(false) ;
   skr.BacktoRoot() ;
   // cout << "----------------------Print Parallel Race Track---------------------" << endl ;
   // skr.P_Print() ;
   // cout << "-------------------------Print Race Track------------------------" << endl ;
-  // Print() ;
+  // skr.Print() ;
   // cout << "-------------------------Print Buffer----------------------------" << endl ;
   // printTBuffer() ;
   cout << "-------------------------Print Shift-----------------------------" << endl ;

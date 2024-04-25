@@ -264,9 +264,8 @@ public:
   vector<vector<double>> memory, parallel_memory, parallel_writing_buffer ;
   vector<vector<int>> ap_index, parallel_ap_index, tree_scope ;
   vector<vector<int>> parallel_prenode, parallel_track_info, parallel_access_time ;
-  vector<vector<int>> parallel_prenode_access_time ;
   vector<int> p_tree_scope, p_tree_scope_end, p_access_port_start ;
-  vector<int> p_access_port_end, p_track_shift, p_track_at ;
+  vector<int> p_access_port_end, p_track_shift ;
   vector<vector<long long int>> thread_handles_tree, ap_access_time ;
   vector<long long int> thread_write_shift_count, thread_read_shift_count, thread_access_time ;
   int total_track = 0, shift_count = 0, word_nums = 0 ;
@@ -681,7 +680,6 @@ public:
     while ( count <= word_nums ) {
       for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ ) {
         if ( parallel_memory[tree_scope][parallel_ap_index[tree_scope][j]] == num ) {
-          a_t++ ;
           out = true ;
           break ;
         } // if
@@ -704,7 +702,6 @@ public:
     } // if 
 
     p_track_shift[tree_scope]+=shift_count ;
-    p_track_at[tree_scope]+=a_t ;
   } // Paraller_Read()
 
   int Level_Tree_Read( double num, int index, int s_c ) {

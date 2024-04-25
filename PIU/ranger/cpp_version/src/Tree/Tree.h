@@ -244,7 +244,7 @@ public:
     } */
 
     bool operator<( const node_info &r ) const {
-      return usage > r.usage ;
+      return weight > r.weight ;
     }  // LaRF */
   } ;
 
