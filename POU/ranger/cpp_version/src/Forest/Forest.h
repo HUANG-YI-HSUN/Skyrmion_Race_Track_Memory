@@ -703,40 +703,34 @@ public:
     p_track_at[tree_scope]+=a_t ;
   } // Paraller_Read()
 
-  int Level_Tree_Read( double num, int index, int s_c ) {
+  void Level_Tree_Read( double num, int index, int &s_c ) {
     bool out = false ;
-    int count ;
+    int count, scope = num / (word_nums * ap_nums) ;
     s_c = 0 ;
 
-    for ( int i = 0 ; i < tree_scope[index].size() ; i++ ) {
-      count = ap_index[tree_scope[index][i]][0] ;
-      while ( count <= word_nums ) {
-        for ( int j = 0 ; j < ap_nums ; j++ ) {
-          if ( memory[tree_scope[index][i]][ap_index[tree_scope[index][i]][j]] == num ) {
-            access_time++ ;
-            out = true ;
-            break ;
-          } // if
-        } // for
-
-        if ( out )
+    
+    count = ap_index[tree_scope[index][scope]][0] ;
+    while ( count <= word_nums ) {
+      for ( int j = 0 ; j < ap_nums ; j++ ) {
+        if ( memory[tree_scope[index][scope]][ap_index[tree_scope[index][scope]][j]] == num ) {
+          out = true ;
           break ;
-
-        if ( count < word_nums )
-          Thread_ShiftP(tree_scope[index][i], s_c) ;
-        count++ ;
-      } // while
+        } // if
+      } // for
 
       if ( out )
         break ;
 
-      if ( i == tree_scope[index].size()-1 && !out ) {
-        cout << "Out of range!!!" ; 
-        cout << " index: " << index << ", and num: " << num << ":::" << endl ;
-      } // if 
-    } // for 
+      if ( count < word_nums )
+        Thread_ShiftP(tree_scope[index][scope], s_c) ;
+      count++ ;
+    } // while
 
-    return s_c ;
+    
+    if ( !out ) {
+      cout << "Out of range!!!" ; 
+      cout << " index: " << index << ", and num: " << num << ":::" << endl ;
+    } // if 
   } // Level_Tree_Read()
 
   /* int Level_Tree_Read( double num, int index, int ap_start_index, int word_nums_index, int end_index, int ap_end_index, int word_nums_end_index ) { // FOR COMPACT ONLY

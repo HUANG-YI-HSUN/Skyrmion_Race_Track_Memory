@@ -329,7 +329,8 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     cout << "Total access time: " << total_access << endl ;  
     cout << "Total reading shifting count: " << total_reading << endl ;
     cout << "Reading latency: " << latency[latency.size()-1] << endl ;
-    cout << "Space utilization: " << (float) skr.space / (skr.total_track * 8192) << endl ;
+    cout << "Total energy consumption: " << total_access * 2 + total_reading * 20 << endl ;
+    cout << "Space utilization: " << (float) skr.space / (skr.total_track * skr.word_nums * skr.ap_nums) << endl ;
 
     // ----------------------------------------------------------------------------------------------------------------
 
@@ -932,12 +933,12 @@ void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, 
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i) {
       trees[i]->predict(prediction_data, oob_prediction, skr.searchList[i]);
       for ( int j = 0 ; j < skr.searchList[i].size() ; j++ ) {
-        int s_c = 0, reading_shift ;
+        int s_c = 0 ;
         for ( int k = 0 ; k < skr.searchList[i][j].size() ; k++ ) {
-          reading_shift = skr.Level_Tree_Read( skr.searchList[i][j][k], i, s_c ) ;
-          skr.total_reading_shift_distance+=reading_shift ;
-          skr.thread_read_shift_count[thread_idx]+=reading_shift ;
-          skr.thread_access_time[thread_idx]+=reading_shift * skr.ap_nums ;
+          skr.Level_Tree_Read( skr.searchList[i][j][k], i, s_c ) ;
+          skr.total_reading_shift_distance+=s_c ;
+          skr.thread_read_shift_count[thread_idx]+=s_c ;
+          skr.thread_access_time[thread_idx]+=s_c * skr.ap_nums ;
         } // for
         s_c = 0 ;
         skr.ThreadBacktoRoot(i, s_c) ;

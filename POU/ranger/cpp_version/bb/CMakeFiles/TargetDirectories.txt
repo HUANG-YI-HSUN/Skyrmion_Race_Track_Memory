@@ -1,0 +1,5 @@
+/home/rg/POU/POU/ranger/cpp_version/bb/CMakeFiles/rebuild_cache.dir
+/home/rg/POU/POU/ranger/cpp_version/bb/CMakeFiles/ranger.dir
+/home/rg/POU/POU/ranger/cpp_version/bb/CMakeFiles/debug.dir
+/home/rg/POU/POU/ranger/cpp_version/bb/CMakeFiles/edit_cache.dir
+/home/rg/POU/POU/ranger/cpp_version/bb/CMakeFiles/release.dir
