@@ -273,7 +273,7 @@ public:
   int last_apindex, parallel_total_track = 0, finish = 0 ;
   int total_reading_shift_distance = 0, access_time = 0, parallel_access = 0 ;
   int tree_shared_track_count = 0, p_w_s = 0 ; // To record each tree need to have how many tracks? 
-  long long int total_access_time = 0 ;
+  long long int total_access_time = 0, totalNode = 0 ;
   bool NLF_Mode ;
   int space = 0 ;
 
@@ -710,8 +710,6 @@ public:
 
       if ( count < word_nums ) {
         P_ShiftP(tree_scope) ;
-        for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ )
-          ap_access_time[tree_scope][j]++ ;
       } // if
       count++ ;
     } // while
@@ -722,6 +720,9 @@ public:
     } // if 
 
     p_track_shift[tree_scope]+=shift_count ;
+    if ( shift_count )
+      for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ )
+        ap_access_time[tree_scope][j]++ ;
   } // Paraller_Read()
 
   int Level_Tree_Read( double num, int index, int s_c ) {
