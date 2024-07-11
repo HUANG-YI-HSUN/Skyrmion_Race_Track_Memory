@@ -13,6 +13,7 @@
 #define FOREST_H_
 
 #include <vector>
+#include <set>
 #include <iostream>
 #include <random>
 #include <ctime>
@@ -264,8 +265,11 @@ public:
   vector<vector<double>> memory, parallel_memory, parallel_writing_buffer ;
   vector<vector<int>> ap_index, parallel_ap_index, tree_scope ;
   vector<vector<int>> parallel_prenode, parallel_track_info, parallel_access_time ;
+  vector<vector<int>> writing_queue ;
   vector<int> p_tree_scope, p_tree_scope_end, p_access_port_start ;
-  vector<int> p_access_port_end, p_track_shift ;
+  vector<int> p_access_port_end, p_track_shift, last_write_track ;
+  vector<bool> ck ;
+  vector<vector<bool>> ccheck ;
   vector<vector<long long int>> thread_handles_tree, ap_access_time ;
   vector<long long int> thread_write_shift_count, thread_read_shift_count, thread_access_time ;
   int total_track = 0, shift_count = 0, word_nums = 0 ;
@@ -273,9 +277,14 @@ public:
   int last_apindex, parallel_total_track = 0, finish = 0 ;
   int total_reading_shift_distance = 0, access_time = 0, parallel_access = 0 ;
   int tree_shared_track_count = 0, p_w_s = 0 ; // To record each tree need to have how many tracks? 
+  int total_node = 0 ;
   long long int total_access_time = 0 ;
-  bool NLF_Mode ;
-  int space = 0 ;
+  bool NLF_Mode, flag ;
+  int space = 0, p_unit_limit ;
+
+  std::vector<std::vector<double>> tempbuffer, NLFbuffer ;
+  std::vector<std::vector<Tree::node_info>> buffer, temp_buffer ;
+  set<int> SS ;
 
   void Refresh( vector<double> &input ) {
     for ( int i = 0 ; i < input.size() ; i++ ) {
@@ -516,26 +525,180 @@ public:
     P_BacktoRoot(false) ;
   } // Parallel_Write() */
 
-  void Level_Tree_Write( vector<double> input, int index ) {
+  void LLevel_Tree_Write( vector<double> input, int index, int size ) {
     int remainder ;
     tree_scope[index].push_back(total_track-1) ;
-    for ( int i = 0 ; i < input.size() ; i++ ) {
+
+    for ( int i = 0 ; i < size ; i++ ) {
       remainder = i % ap_nums ;
       if ( memory[total_track-1][ap_index[total_track-1][remainder]] != -1 ) {
         if ( ap_index[total_track-1][remainder] + 1 < memory[0].size() &&
-             memory[total_track-1][ap_index[total_track-1][remainder]+1] == -1 )
+             memory[total_track-1][ap_index[total_track-1][remainder]+1] == -1 ) {
           ShiftP(total_track-1) ;
+        } // if
         else {
           Addtrack() ;
           tree_scope[index].push_back(total_track-1) ;
           ShiftP(total_track-1) ;
         } // else
       } // if
+      Node anode ;
+      anode.node_id = input[i] ;
+      anode.store_track_num = total_track-1 ;
+      anode.store_ap_num = remainder ;
+      address_table[index].push_back(anode) ;
       memory[total_track-1][ap_index[total_track-1][remainder]] = input[i] ;
+
+      space++ ;
     } // for
 
     BacktoRoot() ;
-  } // Level_Tree_Write
+  } // LLevel_Tree_Write
+
+  void LLevel_Tree_Read( double num, int index, int &s_c ) {
+    bool out = false ;
+    int count ;
+    s_c = 0 ;
+    Node anode ;
+    
+    for ( int i = 0 ; i < address_table[index].size() ; i++ ) {
+      if ( num == address_table[index][i].node_id )
+        anode = address_table[index][i] ;
+    } // for
+
+    count = ap_index[anode.store_track_num][0] ;
+    while ( count <= word_nums ) {
+      for ( int j = 0 ; j < ap_nums ; j++ ) {
+        if ( memory[anode.store_track_num][ap_index[anode.store_track_num][j]] == num ) {
+          out = true ;
+          break ;
+        } // if
+      } // for
+
+      if ( out )
+        break ;
+
+      if ( count < word_nums )
+        Thread_ShiftP(anode.store_track_num, s_c) ;
+      count++ ;
+    } // while
+
+    if ( !out ) {
+      cout << "anode info: " << anode.store_track_num << ", " << anode.store_ap_num << endl ;
+      cout << "lll Out of range!!!" ; 
+      cout << " index: " << index << ", and num: " << num << ":::" << endl ;
+    } // if 
+    
+  } // LLevel_Tree_Read()
+
+  bool CheckWordLine(int num_threads) {
+    // cout << "in checkwordline" << endl ;
+    for ( int i = 0 ; i < writing_queue.size() ; i++ ) { 
+      if ( !writing_queue[i].empty() && !buffer[writing_queue[i][0]].empty() && buffer[writing_queue[i][0]][0].node_index != 0 ) {
+        int treeID = writing_queue[i][0] ;
+        if ( buffer[treeID].size() < ap_nums / num_threads * word_nums ) {
+          P_Addtrack() ;
+          p_track_shift.push_back(0) ;
+          for ( int j = 0 ; j < writing_queue.size() ; j++ ) {
+            if ( !writing_queue[j].empty() && buffer[writing_queue[j][0]].empty() ) {
+              ck[writing_queue[j][0]] = true ;
+              writing_queue[j].erase(writing_queue[j].begin()) ;
+            } // if
+            else if ( !writing_queue[j].empty() && !buffer[writing_queue[j][0]].empty() && buffer[writing_queue[j][0]][0].node_index != 0 ) {
+              int tree = writing_queue[j][0] ;
+              Level_Tree_Write(buffer[tree], tree) ;
+              buffer[tree].clear() ;
+              ck[writing_queue[j][0]] = true ;
+              writing_queue[j].erase(writing_queue[j].begin()) ;
+            } // else if
+          } // for
+
+          // cout << "end of checkwordline" << endl ;
+          return true ;
+        } // if
+      } // if
+    } // for
+
+    // cout << "end of checkwordline" << endl ;
+    return false ;
+  } // CheckWordLine()
+
+  void Level_Tree_Write( vector<Tree::node_info> input, int index ) {
+    int count ;
+    bool out = false ;
+    // tree_scope[index].push_back(total_track-1) ;
+
+    for ( int i = 0 ; i < input.size() ; i++ ) {
+      out = false ;
+      count = parallel_ap_index[parallel_total_track-1][0] ;
+      while ( count <= word_nums ) {
+        for ( int j = 0 ; j < ap_nums ; j++ ) {
+          if ( parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][j]] == -1 ) {
+            Node anode ;
+            anode.node_id = input[i].node_index ;
+            anode.store_track_num = parallel_total_track-1 ;
+            anode.store_ap_num = j ;
+            address_table[index].push_back(anode) ;
+            parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][j]] = input[i].node_index ;
+            out = true ;
+            ccheck[index][input[i].node_index] = true ;
+            space++ ;
+            break ;
+          } // if
+        } // for
+
+        if ( out )
+          break ;
+
+        if ( count == word_nums ) {
+          P_Addtrack() ;
+          p_track_shift.push_back(0) ;
+          count = parallel_ap_index[parallel_total_track-1][0] ;
+        } // if
+
+        if ( count < word_nums ) {
+          P_ShiftP(parallel_total_track-1) ;
+          p_w_s++ ;
+        } // if
+      } // while
+    } // for
+
+  } // Level_Tree_Write 
+
+  /* void Level_Tree_Write( vector<double> input, int index ) {
+    int remainder ;
+    // tree_scope[index].push_back(total_track-1) ;
+
+    for ( int i = 0 ; i < input.size() ; i++ ) {
+      remainder = i % ap_nums ;
+      if ( parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][remainder]] != -1 ) {
+        if ( parallel_ap_index[parallel_total_track-1][remainder] + 1 < parallel_memory[0].size() &&
+             parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][remainder]+1] == -1 ) {
+          P_ShiftP(parallel_total_track-1) ;
+          p_w_s++ ;
+        } // if
+        else {
+          P_Addtrack() ;
+          p_track_shift.push_back(0) ;
+          P_ShiftP(parallel_total_track-1) ;
+          p_w_s++ ;
+        } // else
+      } // if
+      Node anode ;
+      anode.node_id = input[i] ;
+      anode.store_track_num = parallel_total_track-1 ;
+      anode.store_ap_num = remainder ;
+      address_table[index].push_back(anode) ;
+      parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][remainder]] = input[i] ;
+      if ( input[i] == 0 ) {
+        p_tree_scope[index] = parallel_total_track-1 ;
+        p_access_port_start[index] = remainder ;
+      } // if
+      space++ ;
+    } // for
+
+    P_BacktoRoot(false) ;
+  } // Level_Tree_Write */
   
   /* void Level_Tree_Write( vector<double> input, int index ) { // FOR COMPACT ONLY
     int remainder ;
@@ -618,14 +781,205 @@ public:
   } // Paraller_Read() */
 
   struct Node {
-    size_t node_id = 0 ;
-    size_t store_track_num = 0 ;
-    size_t store_ap_num = 0 ;
+    size_t node_id = -1 ;
+    size_t store_track_num = -1 ;
+    size_t store_ap_num = -1 ;
   } ;
 
   vector<vector<Node>> address_table ;
 
-  void Parallel_Write(int num_threads) { // ********************version 3************************
+  bool Check(int pos) {
+    if ( pos < 0 )
+      return false ;
+
+    for ( int i = 0 ; i < ap_nums ; i++ )
+      if ( parallel_memory[pos][parallel_ap_index[pos][i]] == -1 )
+        return true ;
+
+    return false ;
+  } // Check()
+
+  int EmptyPos(int pos) {
+    int ans = 0 ;
+
+    for ( int i = 0 ; i < ap_nums ; i++ ) {
+      if ( parallel_memory[pos][parallel_ap_index[pos][i]] == -1 ) {
+        ans++ ;
+      } // if
+    } // for
+
+    return ans ;
+  } // EmptyPos()
+
+  int FindPos(int pos) {
+    for ( int i = 0 ; i < ap_nums ; i++ )
+      if ( parallel_memory[pos][parallel_ap_index[pos][i]] == -1 )
+        return i ;
+    return -1 ; // Means no way.
+  } // FindPos()
+
+  void P_Write_in(vector<int> &now_tree_index, int b_id, vector<int> buffer_id, int j) {
+    if ( parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][j]] != -1 )
+      cout << "-------------Need Addrack------------" << endl ;
+    ccheck[buffer_id[b_id]][buffer[buffer_id[b_id]][now_tree_index[buffer_id[b_id]]].node_index] = true ;
+    parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][j]] = buffer[buffer_id[b_id]][now_tree_index[buffer_id[b_id]]].node_index ;
+    Node anode ;
+    anode.node_id = buffer[buffer_id[b_id]][now_tree_index[buffer_id[b_id]]].node_index ;
+    anode.store_track_num = parallel_total_track-1 ;
+    anode.store_ap_num = j ;
+    address_table[buffer_id[b_id]].push_back(anode) ;
+    now_tree_index[buffer_id[b_id]]++ ;
+    space++ ;
+  } // P_Write_in()
+
+  void Parallel_Write(int num_threads, int num_trees, vector<int> buffer_id, int min_size) { // ********************version 5************************
+    // cout << "in parallel write" << endl ;
+    vector<int> now_tree_index(num_trees, 0) ;
+    // cout << "pass" << endl ;
+    int a_group_of_ap = ap_nums / num_threads, b_id = 0, iteration = buffer_id.size() ;
+    int time = 0 ;
+    bool need_to_plus = true, out = false ;
+
+    if ( min_size == 0 )
+      return ;
+      
+    while ( iteration > 0 ) {
+      P_Addtrack() ;
+      vector<int> info ;
+      parallel_track_info.push_back(info) ;
+      p_track_shift.push_back(0) ;
+      P_ShiftP( parallel_total_track-1 ) ;
+      p_w_s++ ;
+      
+      for ( int i = 0 ; i < word_nums ; i++ ) {
+        for ( int j = (time % num_threads) * a_group_of_ap ; j < ap_nums ; j++ ) {
+          if ( j != 0 && j % a_group_of_ap == 0 && need_to_plus ) 
+            b_id++ ; 
+
+          if ( b_id >= buffer_id.size() )
+            break ;
+
+          if ( now_tree_index[buffer_id[b_id]] == 0 ) {
+            p_access_port_start[buffer_id[b_id]] = j ;
+          } // if
+  
+          if ( b_id < buffer_id.size() && now_tree_index[buffer_id[b_id]] < min_size ) {
+            P_Write_in(now_tree_index, b_id, buffer_id, j) ;
+
+            if ( now_tree_index[buffer_id[b_id]] == min_size )
+              iteration-- ;
+          } // if
+
+          need_to_plus = true ;
+        } // for
+        b_id = 0 ;
+        time = 0 ;
+        
+        while ( b_id < buffer_id.size() && now_tree_index[buffer_id[b_id]] >= min_size ) {
+          b_id++ ;
+          time++ ;
+          need_to_plus = false ;
+        } // while
+
+        if ( b_id >= buffer_id.size() ) 
+          break ;
+
+        if ( i < word_nums-1 ) {
+          P_ShiftP( parallel_total_track-1 ) ;
+          p_w_s++ ;
+        } // if
+      } // for
+    } // while
+
+    for ( int i = 0 ; i < buffer_id.size() ; i++ ) {
+      // cout << "in here erase" << endl ;
+      buffer[buffer_id[i]].erase(buffer[buffer_id[i]].begin(), buffer[buffer_id[i]].begin()+min_size) ;
+    } // for
+  } // Parallel_Write_2()
+
+  /* void Parallel_Write(int num_threads, int num_trees, vector<int> buffer_id) { // ********************version 4************************
+    vector<int> now_tree_index(num_trees, 0) ;
+    int a_group_of_ap = ap_nums / num_threads, b_id = 0, iteration = buffer_id.size() ;
+    int time = 0 ;
+    bool need_to_plus = true, out = false ;
+      
+    while ( iteration > 0 ) {
+      int num = buffer[buffer_id[b_id]].size() - now_tree_index[buffer_id[b_id]] - 1 ;
+      if ( Check(parallel_total_track-1) && num < EmptyPos(parallel_total_track-1) ) {
+        while ( now_tree_index[buffer_id[b_id]] < buffer[buffer_id[b_id]].size() ) {
+          int i = FindPos(parallel_total_track-1) ;
+          if ( parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][i]] == -1 ) 
+            P_Write_in(now_tree_index, b_id, buffer_id, i) ;
+          
+          if ( now_tree_index[buffer_id[b_id]] == buffer[buffer_id[b_id]].size() ) {
+            iteration-- ;
+            break ;
+          } // if
+        } // while 
+        b_id = 0 ;
+        time = 0 ;
+        
+        while ( b_id < buffer_id.size() && now_tree_index[buffer_id[b_id]] >= buffer[buffer_id[b_id]].size() ) {
+          b_id++ ;
+          time++ ;
+        } // while
+      } // if
+      else {
+        P_Addtrack() ;
+        vector<int> info ;
+        parallel_track_info.push_back(info) ;
+        p_track_shift.push_back(0) ;
+        P_ShiftP( parallel_total_track-1 ) ;
+        p_w_s++ ;
+        
+        for ( int i = 0 ; i < word_nums ; i++ ) {
+          for ( int j = (time % num_threads) * a_group_of_ap ; j < ap_nums ; j++ ) {
+            if ( j != 0 && j % a_group_of_ap == 0 && need_to_plus ) 
+              b_id++ ; 
+
+            if ( b_id >= buffer_id.size() )
+              break ;
+
+            if ( now_tree_index[buffer_id[b_id]] == 0 ) {
+              p_tree_scope[buffer_id[b_id]] = parallel_total_track-1 ;
+              p_access_port_start[buffer_id[b_id]] = j ;
+            } // if
+    
+            if ( b_id < buffer_id.size() && now_tree_index[buffer_id[b_id]] < buffer[buffer_id[b_id]].size() ) {
+              P_Write_in(now_tree_index, b_id, buffer_id, j) ;
+
+              if ( now_tree_index[buffer_id[b_id]] == buffer[buffer_id[b_id]].size() )
+                iteration-- ;
+
+            } // if
+
+            need_to_plus = true ;
+          } // for
+          b_id = 0 ;
+          time = 0 ;
+          
+          while ( b_id < buffer_id.size() && now_tree_index[buffer_id[b_id]] >= buffer[buffer_id[b_id]].size() ) {
+            b_id++ ;
+            time++ ;
+            need_to_plus = false ;
+          } // while
+
+          if ( b_id >= buffer_id.size() ) 
+            break ;
+
+          if ( i < word_nums-1 ) {
+            P_ShiftP( parallel_total_track-1 ) ;
+            p_w_s++ ;
+          } // if
+        } // for
+      } // else
+    } // while
+
+    for ( int i = 0 ; i < buffer_id.size() ; i++ )
+      buffer[buffer_id[i]].clear() ;
+  } // Parallel_Write() */
+
+  /* void Parallel_Write(int num_threads) { // ********************version 3************************
     vector<int> now_tree_index(parallel_writing_buffer.size(), 0) ;
     int a_group_of_ap = ap_nums / num_threads, now_tree = 0, iteration = parallel_writing_buffer.size() ;
     int last = parallel_writing_buffer.size()-1, time = 0 ;
@@ -682,7 +1036,7 @@ public:
         } // if
       } // for
     } // while
-  } // Parallel_Write()
+  } // Parallel_Write() */
 
   void Parallel_Read( double num, int index, int num_threads ) {
     bool out = false ;
@@ -695,12 +1049,19 @@ public:
         anode = address_table[index][i] ;
     } // for
 
-    tree_scope = anode.store_track_num ;
+    tree_scope = anode.store_track_num ; 
+    if ( tree_scope > p_unit_limit ) {
+      Level_Tree_Read(num, index) ;
+      return ;
+    } // if  
+    if ( tree_scope == -1 ) {
+      cout << index << ", num: " << num << endl ;
+    } // if
+
     count = parallel_ap_index[tree_scope][0] ;
     while ( count <= word_nums ) {
       for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ ) {
-        if ( parallel_memory[tree_scope][parallel_ap_index[tree_scope][j]] == num ) {
-          ap_access_time[tree_scope][j]++ ;
+        if ( parallel_memory[tree_scope][parallel_ap_index[tree_scope][j]] == num || parallel_memory[tree_scope][parallel_ap_index[tree_scope][anode.store_ap_num]] == num ) {
           out = true ;
           break ;
         } // if
@@ -712,51 +1073,68 @@ public:
       if ( count < word_nums ) {
         P_ShiftP(tree_scope) ;
       } // if
+      
+      count++ ;
+    } // while
+
+    if ( !out ) {
+      cout << "--------------" << anode.store_ap_num << "-------------" << endl ;
+      for ( int i = 0 ; i < parallel_memory[tree_scope].size() ; i++ )
+        cout << parallel_memory[tree_scope][i] << ", " ;
+      cout << endl ;
+      cout << "Out of range!!!" ; 
+      cout << " index: " << index << ", and num: " << num << ":::" ;
+      // while ( parallel_ap_index[tree_scope][0] > 0 )
+        // P_ShiftN(tree_scope) ;
+      // count = parallel_ap_index[tree_scope][0] ;
+    } // if 
+
+    p_track_shift[tree_scope]+=shift_count ;
+    if ( shift_count )
+      for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ )
+        ap_access_time[tree_scope][j]++ ;
+  } // Paraller_Read()
+
+  void Level_Tree_Read( double num, int index ) {
+    bool out = false ;
+    int count ;
+    shift_count = 0 ;
+    Node anode ;
+    
+    for ( int i = 0 ; i < address_table[index].size() ; i++ ) {
+      if ( num == address_table[index][i].node_id )
+        anode = address_table[index][i] ;
+    } // for
+
+    if ( anode.store_track_num == -1 ) 
+      cout << index << ", num: " << num << endl ;
+    count = parallel_ap_index[anode.store_track_num][0] ;
+    while ( count <= word_nums ) {
+      for ( int j = 0 ; j < ap_nums ; j++ ) {
+        if ( parallel_memory[anode.store_track_num][parallel_ap_index[anode.store_track_num][j]] == num ) {
+          out = true ;
+          break ;
+        } // if
+      } // for
+
+      if ( out )
+        break ;
+
+      if ( count < word_nums )
+        P_ShiftP(anode.store_track_num) ;
       count++ ;
     } // while
 
     if ( !out ) {
       cout << "Out of range!!!" ; 
-      cout << " index: " << index << ", and num: " << num << ":::" ;
+      cout << " index: " << index << ", and num: " << num << ":::" << endl ;
     } // if 
 
-    p_track_shift[tree_scope]+=shift_count ;
-  } // Paraller_Read()
-
-  int Level_Tree_Read( double num, int index, int s_c ) {
-    bool out = false ;
-    int count ;
-    s_c = 0 ;
-
-    for ( int i = 0 ; i < tree_scope[index].size() ; i++ ) {
-      count = ap_index[tree_scope[index][i]][0] ;
-      while ( count <= word_nums ) {
-        for ( int j = 0 ; j < ap_nums ; j++ ) {
-          if ( memory[tree_scope[index][i]][ap_index[tree_scope[index][i]][j]] == num ) {
-            access_time++ ;
-            out = true ;
-            break ;
-          } // if
-        } // for
-
-        if ( out )
-          break ;
-
-        if ( count < word_nums )
-          Thread_ShiftP(tree_scope[index][i], s_c) ;
-        count++ ;
-      } // while
-
-      if ( out )
-        break ;
-
-      if ( i == tree_scope[index].size()-1 && !out ) {
-        cout << "Out of range!!!" ; 
-        cout << " index: " << index << ", and num: " << num << ":::" << endl ;
-      } // if 
-    } // for 
-
-    return s_c ;
+    SS.insert(anode.store_track_num) ;
+    p_track_shift[anode.store_track_num]+=shift_count ;
+    if ( shift_count )
+      for ( int j = 0 ; j < ap_nums ; j++ )
+        ap_access_time[anode.store_track_num][j]++ ;
   } // Level_Tree_Read()
 
   /* int Level_Tree_Read( double num, int index, int ap_start_index, int word_nums_index, int end_index, int ap_end_index, int word_nums_end_index ) { // FOR COMPACT ONLY
@@ -824,7 +1202,7 @@ public:
   } // Reset()
 
   // ----------------------------------------above are shift code --------------------------------------------
-  std::vector<std::vector<double>> buffer, tempbuffer, NLFbuffer ;
+  
 
   std::vector<std::vector<std::vector<int>>> searchList, parallel_searchList ;
 
@@ -888,7 +1266,7 @@ public:
     cout << "Buffer" << i+1 << "'s size: " << buffer[i].size() << endl ;
   } // print()
 
-  void printBuffer() {
+  /* void printBuffer() {
     for ( int i = 0 ; i < buffer.size() ; i++ ) {
       cout << "Buffer" << i+1 << ": " ;
       for ( int j = 0 ; j < buffer[i].size() ; j++ ) {
@@ -900,7 +1278,7 @@ public:
       // cout << endl << "Buffer" << i+1 << "'s size: " << buffer[i].size() ;
       cout << endl ; 
     } // for
-  } // printBuffer()
+  } // printBuffer() */
 
   void printNLFBuffer() {
     for ( int i = 0 ; i < NLFbuffer.size() ; i++ ) {

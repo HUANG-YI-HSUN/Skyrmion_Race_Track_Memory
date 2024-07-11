@@ -198,7 +198,7 @@ public:
 
   virtual void allocateMemory() = 0;
 
-  void grow(std::vector<double>* variable_importance, int limit);
+  void grow(std::vector<double>* variable_importance, int limit, int &total_node);
 
   void predict(const Data* prediction_data, bool oob_prediction, vector<vector<int>> &searchSequence);
 
@@ -247,6 +247,10 @@ public:
       return weight > r.weight ;
     }  // LaRF */
   } ;
+
+  int returnDepth() {
+    return depth ;
+  } // returnDepth()
 
   void Swap(int limit) {
     for ( int i = node_list.size() - 1 ; i >= 0 ; i-- ) {
@@ -312,9 +316,13 @@ public:
     result.push_back( i ) ;
   } // WriteIn()
 
-  void WriteInShowUp( std::vector<double> &result, int i ) {
-    result.push_back( node_list[i].node_index ) ;
+  void WriteInShowUp( std::vector<node_info> &result, int i ) {
+    result.push_back( node_list[i] ) ;
   } // WriteInShowUp()
+
+  void InstanceSort( std::vector<node_info> &result ) {
+    stable_sort(result.begin(), result.end()) ;
+  } // InstanceSort()
 
   int returnSplitValueSize() {
     return split_values.size() ;

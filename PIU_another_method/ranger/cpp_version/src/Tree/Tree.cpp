@@ -127,7 +127,7 @@ void Tree::init(const Data* data, uint mtry, size_t num_samples, uint seed, std:
   }
 }
 
-void Tree::grow(std::vector<double>* variable_importance, int limit) {
+void Tree::grow(std::vector<double>* variable_importance, int limit, int &total_node) {
   // Allocate memory for tree growing
   allocateMemory();
   // cout << "Allocate success." << endl ;
@@ -160,7 +160,7 @@ void Tree::grow(std::vector<double>* variable_importance, int limit) {
   // Init start and end positions
   start_pos[0] = 0;
   end_pos[0] = sampleIDs.size();
-  // cout << "start_pos: " << start_pos[0] << ", " << "end_pos: " << end_pos[0] << endl ; 
+  //cout << "start_pos: " << start_pos[0] << ", " << "end_pos: " << end_pos[0] << endl ; 
 
   parent.push_back(-1) ;
   node_info anode ;
@@ -192,7 +192,7 @@ void Tree::grow(std::vector<double>* variable_importance, int limit) {
     }
     ++i;
   }
-  // cout << "Total: " << i << endl ;
+
   size_t sampleSize = sampleIDs.size() ;
   for ( int j = 0 ; j < node_list.size() ; j++ ) {
     node_list[j].weight/=sampleSize ;
@@ -201,9 +201,7 @@ void Tree::grow(std::vector<double>* variable_importance, int limit) {
 
   stable_sort(node_list.begin(), node_list.end()) ;
 
-  // cout << "----------after----------" << endl ;
-  // for ( int j = 0 ; j < node_list.size() ; j++ ) 
-    // cout << j << ": " << node_list[j].weight << endl ;
+  total_node+=i ;
 
   // Delete sampleID vector to save memory
   sampleIDs.clear();
