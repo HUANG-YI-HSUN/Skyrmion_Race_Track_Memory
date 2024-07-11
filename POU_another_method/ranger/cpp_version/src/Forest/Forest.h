@@ -264,7 +264,7 @@ public:
   vector<vector<double>> memory, parallel_memory, parallel_writing_buffer ;
   vector<vector<int>> ap_index, parallel_ap_index, tree_scope ;
   vector<vector<int>> parallel_prenode, parallel_track_info, parallel_access_time ;
-  vector<vector<int>> parallel_prenode_access_time ;
+  vector<vector<int>> parallel_prenode_access_time, writing_queue ;
   vector<int> p_tree_scope, p_tree_scope_end, p_access_port_start ;
   vector<int> p_access_port_end, p_track_shift, p_track_at ;
   vector<long long int> thread_write_shift_count, thread_read_shift_count ;
@@ -688,11 +688,11 @@ public:
 
   vector<vector<Node>> address_table ;
 
-  void Level_Tree_Write( vector<double> input, int index ) {
+  void Level_Tree_Write( vector<double> input, int index, int size ) {
     int remainder ;
     tree_scope[index].push_back(total_track-1) ;
 
-    for ( int i = 0 ; i < input.size() ; i++ ) {
+    for ( int i = 0 ; i < size ; i++ ) {
       remainder = i % ap_nums ;
       if ( memory[total_track-1][ap_index[total_track-1][remainder]] != -1 ) {
         if ( ap_index[total_track-1][remainder] + 1 < memory[0].size() &&
