@@ -353,7 +353,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     cout << "Total access time: " << energy_total_access_time << endl ;
     cout << "Total reading shifting count: " << skr.total_reading_shift_distance << endl ;
     cout << "Reading latency: " << latency << endl ;
-    cout << "Total energy consumption: " << energy_total_access_time * 2 + skr.total_reading_shift_distance * 20 << endl ;
+    cout << "Total energy consumption: " << ((long long int)energy_total_access_time * 2) + ((long long int)skr.total_reading_shift_distance * 20) << endl ;
     cout << "Space utilization: " << (double) skr.space / ((skr.parallel_memory.size() + skr.memory.size()) * skr.word_nums * skr.ap_nums) << endl ;
 
     // cout << "-------------------------Print Race Track------------------------" << endl ;
@@ -688,7 +688,9 @@ void Forest::grow() {
   }
 
   // below are my own code.
+  int total_tree_node = 0 ;
   for ( int j = 0 ; j < skr.buffer.size() ; j++ ) {
+    total_tree_node+=trees[j]->returnSplitValueSize() ;
     if ( !skr.buffer[j].empty() ) {
       int k ;
       for ( k = 0 ; skr.p_tree_scope[j] == -1 && k < skr.buffer[j].size() && k < skr.PR_placement_limit * skr.tree_shared_track_count ; k++ ) 
@@ -719,6 +721,11 @@ void Forest::grow() {
   // printTBuffer() ;
   cout << "-------------------------Print Shift-----------------------------" << endl ;
   skr.PrintSfift() ;
+  cout << "-------------------------Writing Latency---------------------------" << endl ;
+  cout << skr.shift_count * 0.5 + ( total_tree_node / skr.ap_nums + 1) << endl ;
+  cout << "-------------------------Writing Energy---------------------------" << endl ;
+  cout << skr.shift_count * 20 + total_tree_node * 200 << endl ;
+  cout << endl << endl ;
   // cout << "----------------------Print Tree Scope---------------------------" << endl ;
   /* for ( int i = 0 ; i < tree_scope.size() ; i++ ) {
     cout << "tree" << i << "'s scope: " ;
@@ -964,7 +971,7 @@ void Forest::computePermutationImportance() {
 void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_importance) {
   if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i) {
-      // cout << "thread_idx: " << thread_idx << endl << ", tree id: " << i << endl ;
+      // cout << "thread_idx: " << thread_idx << ", tree id: " << i << endl ;
       trees[i]->grow(variable_importance, skr.PR_placement_limit * skr.tree_shared_track_count);
       int index = 0, node_size = trees[i]->returnSplitValueSize(), track_size = skr.memory[0].size() ;
       while ( index < node_size ) {

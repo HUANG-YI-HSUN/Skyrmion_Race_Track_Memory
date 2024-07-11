@@ -690,8 +690,6 @@ public:
 
       if ( count < word_nums ) {
         P_ShiftP(tree_scope) ;
-        for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ )
-          ap_access_time[tree_scope][j]++ ;
       } // if
       count++ ;
     } // while
@@ -702,6 +700,9 @@ public:
     } // if 
 
     p_track_shift[tree_scope]+=shift_count ;
+    if ( shift_count )
+      for ( int j = p_access_port_start[index] ; j < p_access_port_start[index]+(ap_nums/num_threads) ; j++ )
+        ap_access_time[tree_scope][j]++ ;
   } // Paraller_Read()
 
   int Level_Tree_Read( double num, int index, int s_c ) {
