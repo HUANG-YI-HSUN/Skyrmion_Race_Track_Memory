@@ -642,7 +642,9 @@ void Forest::grow() {
   }
 
   // below are my own code.
+  int total_tree_node = 0 ;
   for ( int j = 0 ; j < skr.buffer.size() ; j++ ) {
+    total_tree_node+=trees[j]->returnSplitValueSize() ;
     if ( !skr.buffer[j].empty() ) {
       skr.Addtrack() ;
 
@@ -665,6 +667,10 @@ void Forest::grow() {
   // printTBuffer() ;
   cout << "-------------------------Print Shift-----------------------------" << endl ;
   skr.PrintSfift() ;
+  cout << "-------------------------Writing Latency---------------------------" << endl ;
+  cout << skr.shift_count * 0.5 + ( total_tree_node / skr.ap_nums + 1) << endl ;
+  cout << "-------------------------Writing Energy---------------------------" << endl ;
+  cout << skr.shift_count * 20 + total_tree_node * 200 << endl ;
   cout << endl << endl ;
 }
 
@@ -938,7 +944,8 @@ void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, 
           skr.Level_Tree_Read( skr.searchList[i][j][k], i, s_c ) ;
           skr.total_reading_shift_distance+=s_c ;
           skr.thread_read_shift_count[thread_idx]+=s_c ;
-          skr.thread_access_time[thread_idx]+=s_c * skr.ap_nums ;
+          if ( s_c )
+            skr.thread_access_time[thread_idx]+=skr.ap_nums ;
         } // for
         s_c = 0 ;
         skr.ThreadBacktoRoot(i, s_c) ;
