@@ -266,7 +266,7 @@ public:
     } // for
   } // Swap()
 
-  void LaRF_sort(vector<vector<int>> search_list, vector<double> &buffer) {
+  /* void LaRF_sort(vector<vector<int>> search_list, vector<double> &buffer) {
     int size = returnSplitValueSize(), treeHight = depth / 2, i = 0 ;
     vector<bool> used (size, false) ;
 
@@ -295,7 +295,7 @@ public:
       if ( !used[j] )
         buffer.push_back(node_list[j].node_index) ;
     } // for
-  } // LaRF_sort() 
+  } // LaRF_sort() */
 
   void Frequency_sort(vector<vector<int>> search_list, vector<double> &buffer) {
     int begin = 0, size = node_list.size() ;

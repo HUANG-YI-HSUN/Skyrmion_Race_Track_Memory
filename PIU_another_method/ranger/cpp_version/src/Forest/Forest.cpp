@@ -311,12 +311,12 @@ void Forest::run(bool verbose, bool compute_oob_error) {
       computePredictionError();
     }
 
-    // ------------------------------------------------------------------------------------------------------------------
+    // --------------------------------------------------below are my own code--------------------------------------------------------
     // skr.printsearchList() ;
     
     skr.parallel_prenode.resize( skr.parallel_memory.size() ) ;
     // skr.parallel_access_time.resize( skr.parallel_memory.size() )  ;
-    cout << "Finding..." << endl ;
+    cout << "Finding..." << endl ; // start finding, to make it simpler I use sequential way to simulate parallel way.
     for ( int i = 0 ; i < num_trees ; i++ ) { 
       for ( int j = 0 ; j < skr.parallel_searchList[i].size() ; j++ ) {
         for ( int k = 0 ; k < skr.parallel_searchList[i][j].size() ; k++ ) {
@@ -371,7 +371,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     } // for
     skr.BacktoRoot() ;
 
-    long long int llatency = ((long long int)total_access_time * 0.1) + ((long long int)skr.total_reading_shift_distance*0.5) ;
+    long long int llatency = ((long long int)total_access_time * 0.1) + ((long long int)skr.total_reading_shift_distance*0.5) ; // show the result.
     cout << "Total track count: " << skr.parallel_memory.size() + skr.memory.size() << endl ;
     cout << "Total access time: " << energy_total_access_time + total_access << endl ;
     cout << "Total reading shifting count: " << skr.total_reading_shift_distance + total_reading << endl ;
@@ -379,19 +379,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     cout << "Total energy consumption: " << ( energy_total_access_time * 2 + skr.total_reading_shift_distance * 20 ) + ( total_access * 2 + total_reading * 20 )  << endl ;
     cout << "Space utilization: " << (double) skr.space / ((skr.parallel_memory.size() + skr.memory.size()) * skr.word_nums * skr.ap_nums) << endl ;
 
-    // cout << "-------------------------Print Race Track------------------------" << endl ;
-    // Print() ;
-    // cout << "----------------------Print Tree Scope---------------------------" << endl ;
-    /* for ( int i = 0 ; i < tree_scope.size() ; i++ ) {
-      cout << "tree" << i+1 << "'s scope: " ;
-      for ( int j = 0 ; j < tree_scope[i].size() ; j++ ) {
-        cout << tree_scope[i][j] ;
-
-        if ( j != tree_scope[i].size()-1 )
-          cout << ", " ;
-      } // for
-      cout << endl ;
-    } // for */
+    // --------------------------------------------------above are my own code--------------------------------------------------------
     if (importance_mode == IMP_PERM_BREIMAN || importance_mode == IMP_PERM_LIAW || importance_mode == IMP_PERM_RAW
         || importance_mode == IMP_PERM_CASEWISE) {
       if (verbose && verbose_out) {
@@ -401,38 +389,6 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     }
   }
 }
-
-/* 
-   for ( int i = 0 ; i < num_trees ; i++ ) {
-      trees[i]->LaRF_sort(searchList[i], buffer[i]) ;
-      for ( int j = 0 ; j < buffer.size() ; j++ ) {
-        if ( !buffer[j].empty() ) {
-          Addtrack() ;
-          Level_Tree_Write(buffer[i], i, -1, trees[i]->returnSplitValueSize()) ;
-          buffer[j].clear() ;
-        } // if
-      } // for
-    } // for // -------------------------------------LaRF code----------------------------------------------
-
-
-    cout << "-------------------------Print Shift-----------------------------" << endl ;
-    PrintSfift() ;
-    cout << "-------------------------Print Race Track------------------------" << endl ;
-    Print() ;
-    cout << "-------------------------Print Buffer----------------------------" << endl ;
-    printTBuffer() ;
-    // cout << endl ;
-    cout << "----------------------Print Tree Scope---------------------------" << endl ;
-    for ( int i = 0 ; i < tree_scope.size() ; i++ ) {
-      cout << "tree" << i+1 << "'s scope: " ;
-      for ( int j = 0 ; j < tree_scope[i].size() ; j++ ) {
-        cout << tree_scope[i][j] ;
-
-        if ( j != tree_scope[i].size()-1 )
-          cout << ", " ;
-      } // for
-      cout << endl ;
-    } // for */ // -------------------------------------LaRF code----------------------------------------------
 
 // #nocov start
 void Forest::writeOutput() {
@@ -567,6 +523,7 @@ set<int> list ;
 
 int total_thread ;
 void Forest::grow() {
+  // -----------------------------------------------------------below are my own code-----------------------------------------------------------
   string temp = "" ;
   skr.buffersize = 100000 ; // ( batch_size * tree_size ) / 2
   skr.NLF_Mode = false ;
@@ -586,8 +543,8 @@ void Forest::grow() {
   cout << "----------Below is result------------" << endl ;
   skr.Reset() ;
   skr.Initialize( wordnums, access_port_nums ) ;
-  
   // ----------------------above are my own code--------------------------
+
   // Create thread ranges
   equalSplit(thread_ranges, 0, num_trees - 1, num_threads);
   
@@ -720,7 +677,7 @@ void Forest::grow() {
     }
   }
 
-  // below are my own code.
+  //----------------------------------------------------------- below are my own code.-----------------------------------------------------------
   int total_depth = 0, total_node_num = 0 ;
   for ( int i = 0 ; i < num_trees ; i++ ) {
     total_depth+=trees[i]->returnDepth() ;
@@ -764,13 +721,6 @@ void Forest::grow() {
     } // if
   } // for 
 
-  /* for ( int i = 0 ; i < num_trees ; i++ ) {
-    for ( int j = 0 ; j < trees[i]->returnSplitValueSize() ; j++ ) {
-      if ( !skr.ccheck[i][j] )
-        cout << i << ", " << skr.ccheck[i][j] << endl ;
-    } // for
-  } // for */
-  
   skr.buffer.clear() ;
   skr.P_BacktoRoot(false) ;
   skr.BacktoRoot() ;
@@ -785,6 +735,8 @@ void Forest::grow() {
   cout << "-------------------------Writing Energy---------------------------" << endl ;
   cout << skr.shift_count * 20 + total_tree_node * 200 << endl ;
   cout << endl << endl ;
+
+  // -----------------------------------------------------------------above are my own code-----------------------------------------------------------
 }
 
 void Forest::predict() {
@@ -1003,21 +955,20 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
   int threshold1 = num_trees / num_threads, done_tree = 1 ;
   if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i, done_tree++) {
-      if ( done_tree > threshold1 ) 
+      // -------------------------------------------below are my own code------------------------------------------------------
+      if ( done_tree > threshold1 ) // dealing with the tree that need to be written in POU manner
         list.insert(i) ;
-      // cout << "thread_idx: " << thread_idx << ", tree id: " << i << endl ;
+
       skr.writing_queue[thread_idx].push_back(i) ;
       trees[i]->grow(variable_importance, skr.PR_placement_limit * skr.tree_shared_track_count, skr.total_node);
       int index = 0, node_size = trees[i]->returnSplitValueSize(), track_size = skr.memory[0].size() ;
       int limit = skr.buffersize / num_threads ;
       while ( index < node_size ) {
-        if ( done_tree > threshold1 ) {
-          // cout << "thread: " << thread_idx << ", if" << endl ;
+        if ( done_tree > threshold1 ) { // need to write in POU manner
           trees[i]->WriteInShowUp(skr.temp_buffer[i], index) ;
           index++ ;
         } // if
         else if ( skr.returnBufferSize() < skr.buffersize && (skr.buffer[i].size() < limit || total_thread < num_threads ) ) {
-          // cout << "thread: " << thread_idx << ", else if" << endl ;
           skr.ccheck[i].push_back(false) ;
           trees[i]->WriteInShowUp(skr.buffer[i], index) ;
           index++ ;
@@ -1025,7 +976,6 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
         else {
           std::unique_lock<std::mutex> lock(mutex);
           if ( skr.returnBufferSize() >= skr.buffersize ) {
-            // cout << "in" << endl ;
             vector<int> buffer_id ;
             int min_size = 2147483647 ;
             for ( int k = 0 ; k < num_trees ; k++ ) {
@@ -1039,7 +989,6 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
               for ( int j = 0 ; j < skr.writing_queue.size() ; j++ ) {
                 if ( !skr.writing_queue[j].empty() && !skr.buffer[skr.writing_queue[j][0]].empty() ) {
                   int treeID = skr.writing_queue[j][0] ;
-                  // trees[treeID] -> InstanceSort(skr.buffer[treeID]) ; // Local optimize
                   buffer_id.push_back(treeID) ;
                   min_size = min_size > skr.buffer[treeID].size() ? skr.buffer[treeID].size() : min_size ;
                 } // if
@@ -1053,45 +1002,7 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
           } // if
         } // else
       } // whlie
-
-      /*while ( index < node_size ) {
-        if ( skr.returnBufferSize() < skr.buffersize && (skr.buffer[i].size() < limit || total_thread < num_threads ) ) {
-          trees[i]->WriteInShowUp(skr.buffer[i], index) ;
-          index++ ;
-        } // if
-        else {
-          std::unique_lock<std::mutex> lock(mutex);
-          vector<int> buffer_id ;
-          int min_size = 2147483647 ;
-          // cout << "stuck here, skr.returnBufferSize(): " << skr.returnBufferSize() << endl ;
-          if ( skr.returnBufferSize() >= skr.buffersize ) {
-            // for ( int k = 0 ; k < num_trees ; k++ )
-              // cout << k << ", " << skr.buffer[k].size() << endl ;
-            if ( !skr.CheckWordLine(num_threads) ) {
-              for ( int j = 0 ; j < skr.writing_queue.size() ; j++ ) {
-                // cout << j << ", " << skr.writing_queue[j].size() << endl ;
-                if ( !skr.writing_queue[j].empty() ) {
-                  int treeID = skr.writing_queue[j][0] ;
-                  trees[treeID] -> InstanceSort(skr.buffer[treeID]) ; // Local optimize
-                  buffer_id.push_back(treeID) ;
-                  min_size = min_size > skr.buffer[treeID].size() ? skr.buffer[treeID].size() : min_size ;
-                } // if
-              } // for
-              min_size = min_size / (skr.ap_nums / num_threads * skr.word_nums) ; 
-              min_size = min_size * (skr.ap_nums / num_threads * skr.word_nums) ;
-              skr.Parallel_Write(num_threads, num_trees, buffer_id, min_size) ;
-              for ( int j = 0 ; j < skr.writing_queue.size() ; j++ ) {
-                if ( !skr.writing_queue[j].empty() ) {
-                  int treeID = skr.writing_queue[j][0] ;
-                  trees[treeID] -> FOR_SORT_CLEAR(min_size) ;
-                } // if
-              } // for 
-              // cout << skr.parallel_total_track << endl ;
-            } // if
-          } // if
-        } // else
-      } // whlie*/
-
+      // -------------------------------------------above are my own code------------------------------------------------------
       // Check for user interrupt
 #ifdef R_BUILD
       if (aborted) {
@@ -1112,71 +1023,23 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
   total_thread-- ;
 }
 
-        /* vector<int> buffer_id, not_enough_buffer ;
-          int min_size = 2147483647 ;
-          for ( int j = 0 ; j < skr.buffer.size() ; j++ ) {
-            if ( trees[j]->returnSplitValueSize() == skr.buffer[j].size() ) {
-              min_size = min_size > skr.buffer[j].size() ? skr.buffer[j].size() : min_size ;
-              buffer_id.push_back(j) ;
-              if ( buffer_id.size() % num_threads == 0 ) {
-                min_size = min_size / (skr.ap_nums / num_threads * skr.word_nums) ; 
-                min_size = min_size * (skr.ap_nums / num_threads * skr.word_nums) ; 
-                skr.Parallel_Write(num_threads, num_trees, buffer_id, min_size) ;
-                buffer_id.clear() ;
-              } // if
-            } // if
-          } // for*/
-
-/*
-          std::unique_lock<std::mutex> lock(mutex);
-          cout << "-------------------Buffer is Full ---------------------" << endl ;
-          // printBuffer() ;
-          for ( int j = 0 ; j < skr.buffer.size() ; j++ ) {
-            if ( !skr.buffer[j].empty() && trees[j]->returnSplitValueSize() == skr.buffer[j].size()  ) {
-              int k ;
-              for ( k = 0 ; skr.p_tree_scope[j] == -1 && k < skr.buffer[j].size() && k < skr.PR_placement_limit * skr.tree_shared_track_count ; k++ ) 
-                skr.parallel_writing_buffer[j].push_back(skr.buffer[j][k]) ;
-                
-              if ( !skr.parallel_writing_buffer[j].empty() ) 
-                skr.buffer[j].erase(skr.buffer[j].begin(), skr.buffer[j].begin()+k) ;
-
-              if ( !skr.buffer[j].empty() ) {              // Still have some elements in buffer.
-                skr.Addtrack() ;
-
-                if ( skr.NLF_Mode )
-                  skr.buffer[j] = skr.Non_Leaf_First_Sort(skr.buffer[j], trees[j]->parent, trees[j]->nodeid) ;
-                skr.Level_Tree_Write(skr.buffer[j], j) ;
-                skr.buffer[j].clear() ;
-              } // if
-            } // if
-          } // for*/
-
 void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, bool oob_prediction) {
   int threshold1 = num_trees / num_threads, done_tree = 1 ;
   if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i, done_tree++) {
+      // ------------------------------------------------below are my own code------------------------------------------------------------
       trees[i]->predict(prediction_data, oob_prediction, skr.searchList[i]);
-      if ( list.find(i) == list.end() ) {
+      if ( list.find(i) == list.end() ) { // dealing with the tree that has to be read in POU manner.
         skr.parallel_searchList[i].resize( skr.searchList[i].size() ) ;
         for ( int j = 0 ; j < skr.searchList[i].size() ; j++ ) {
           int s_c = 0, reading_shift ;
           for ( int k = 0 ; k < skr.searchList[i][j].size() ; k++ ) {
             if ( skr.searchList[i][j][k] < skr.PR_placement_limit * skr.tree_shared_track_count ) 
               skr.parallel_searchList[i][j].push_back( skr.searchList[i][j][k] ) ;
-            /* else {
-              reading_shift = skr.Level_Tree_Read( skr.searchList[i][j][k], i, s_c ) ;
-              skr.total_reading_shift_distance+=reading_shift ;
-              skr.thread_read_shift_count[thread_idx]+=reading_shift ;
-              skr.thread_access_time[thread_idx]+=reading_shift * skr.ap_nums ;
-            } // else */
           } // for
-          // s_c = 0 ;
-          // skr.ThreadBacktoRoot(i, s_c) ;
-          // skr.total_reading_shift_distance+=s_c ;
-          // skr.thread_read_shift_count[thread_idx]+=s_c ;
         } // for 
       } // if
-      else {
+      else { // dealing with the tree that has to be read in PIU manner.
         for ( int j = 0 ; j < skr.searchList[i].size() ; j++ ) {
           int s_c = 0 ;
           for ( int k = 0 ; k < skr.searchList[i][j].size() ; k++ ) {
@@ -1193,13 +1056,14 @@ void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, 
         } // for
       } // else
 
+      // -----------------------------------------------above are my own code----------------------------------------------------------------
       // Check for user interrupt
 #ifdef R_BUILD
       if (aborted) {
         std::unique_lock<std::mutex> lock(mutex);
         ++aborted_threads;
         condition_variable.notify_one();
-        return;
+        return;           
       }
 #endif
 

@@ -324,13 +324,13 @@ public:
       ap_index[pos][i]-- ;
   } // ShiftN()
 
-  void P_ShiftP( int pos ) {
+  void P_ShiftP( int pos ) { // For parallel unit
     shift_count++ ;
     for ( int i = 0 ; i < parallel_ap_index[pos].size() ; i++ ) 
       parallel_ap_index[pos][i]++ ;
   } // P_ShiftP()
 
-  void P_ShiftN( int pos ) {
+  void P_ShiftN( int pos ) { // For parallel unit
     shift_count++ ;
     for ( int i = 0 ; i < parallel_ap_index[pos].size() ; i++ )
       parallel_ap_index[pos][i]-- ;
@@ -354,7 +354,7 @@ public:
     } // for
   } // Addtrack()
 
-  void P_Addtrack() {
+  void P_Addtrack() { // For parallel unit
     int id = 0 ;
     vector<double> track ;
     vector<int> index_table ;
@@ -399,7 +399,7 @@ public:
     } // for
   } // P_Print()
 
-  void BacktoRootCompress( int track_start, int track_end, int nums_start ) {
+  void BacktoRootCompress( int track_start, int track_end, int nums_start ) {  // For data compress, did not use anymore 
     int limit ;
     for ( int i = track_start ; i <= track_end ; i++ ) {
       if ( i == track_start ) 
@@ -414,14 +414,14 @@ public:
     } // for
   } // BacktoRootCompress() ;
 
-  void BacktoRoot() {
+  void BacktoRoot() { // Back to initial state
     for( int i = total_track - 1 ; i >= 0 ; i-- ) {
       while( ap_index[i][0] > 0 ) // Just check whether the first access port of fist track is on the location 0 or not.
         ShiftN(i) ;
     } // for
   } // BacktoRoot()
 
-  int ThreadBacktoRoot(int id, int &s_c) {
+  int ThreadBacktoRoot(int id, int &s_c) { // Back to initial state, for mulithreads
     for( int i = 0 ; i < tree_scope[id].size() ; i++ ) {
       while( ap_index[tree_scope[id][i]][0] > 0 ) // Just check whether the first access port of fist track is on the location 0 or not.
         Thread_ShiftN(tree_scope[id][i], s_c) ;
@@ -525,7 +525,7 @@ public:
     P_BacktoRoot(false) ;
   } // Parallel_Write() */
 
-  void LLevel_Tree_Write( vector<double> input, int index, int size ) {
+  void LLevel_Tree_Write( vector<double> input, int index, int size ) { // PIU write
     int remainder ;
     tree_scope[index].push_back(total_track-1) ;
 
@@ -543,7 +543,7 @@ public:
         } // else
       } // if
       Node anode ;
-      anode.node_id = input[i] ;
+      anode.node_id = input[i] ;  // mapping
       anode.store_track_num = total_track-1 ;
       anode.store_ap_num = remainder ;
       address_table[index].push_back(anode) ;
@@ -555,7 +555,7 @@ public:
     BacktoRoot() ;
   } // LLevel_Tree_Write
 
-  void LLevel_Tree_Read( double num, int index, int &s_c ) {
+  void LLevel_Tree_Read( double num, int index, int &s_c ) { // PIU read
     bool out = false ;
     int count ;
     s_c = 0 ;
@@ -583,7 +583,7 @@ public:
       count++ ;
     } // while
 
-    if ( !out ) {
+    if ( !out ) { // To check whether we have detected the node or not
       cout << "anode info: " << anode.store_track_num << ", " << anode.store_ap_num << endl ;
       cout << "lll Out of range!!!" ; 
       cout << " index: " << index << ", and num: " << num << ":::" << endl ;
@@ -591,20 +591,20 @@ public:
     
   } // LLevel_Tree_Read()
 
-  bool CheckWordLine(int num_threads) {
+  bool CheckWordLine(int num_threads) { // check whether same batch have finished the work
     // cout << "in checkwordline" << endl ;
     for ( int i = 0 ; i < writing_queue.size() ; i++ ) { 
       if ( !writing_queue[i].empty() && !buffer[writing_queue[i][0]].empty() && buffer[writing_queue[i][0]][0].node_index != 0 ) {
         int treeID = writing_queue[i][0] ;
         if ( buffer[treeID].size() < ap_nums / num_threads * word_nums ) {
-          P_Addtrack() ;
+          P_Addtrack() ; // need to create new unit to place the rest nodes.
           p_track_shift.push_back(0) ;
           for ( int j = 0 ; j < writing_queue.size() ; j++ ) {
-            if ( !writing_queue[j].empty() && buffer[writing_queue[j][0]].empty() ) {
+            if ( !writing_queue[j].empty() && buffer[writing_queue[j][0]].empty() ) { // the tree in finished, this batch is over
               ck[writing_queue[j][0]] = true ;
               writing_queue[j].erase(writing_queue[j].begin()) ;
             } // if
-            else if ( !writing_queue[j].empty() && !buffer[writing_queue[j][0]].empty() && buffer[writing_queue[j][0]][0].node_index != 0 ) {
+            else if ( !writing_queue[j].empty() && !buffer[writing_queue[j][0]].empty() && buffer[writing_queue[j][0]][0].node_index != 0 ) { // still have some nodes in buffer
               int tree = writing_queue[j][0] ;
               Level_Tree_Write(buffer[tree], tree) ;
               buffer[tree].clear() ;
@@ -623,7 +623,7 @@ public:
     return false ;
   } // CheckWordLine()
 
-  void Level_Tree_Write( vector<Tree::node_info> input, int index ) {
+  void Level_Tree_Write( vector<Tree::node_info> input, int index ) { // parallel unit write in POU manner
     int count ;
     bool out = false ;
     // tree_scope[index].push_back(total_track-1) ;
@@ -818,7 +818,7 @@ public:
     return -1 ; // Means no way.
   } // FindPos()
 
-  void P_Write_in(vector<int> &now_tree_index, int b_id, vector<int> buffer_id, int j) {
+  void P_Write_in(vector<int> &now_tree_index, int b_id, vector<int> buffer_id, int j) { // sub function of Parallwl_Write
     if ( parallel_memory[parallel_total_track-1][parallel_ap_index[parallel_total_track-1][j]] != -1 )
       cout << "-------------Need Addrack------------" << endl ;
     ccheck[buffer_id[b_id]][buffer[buffer_id[b_id]][now_tree_index[buffer_id[b_id]]].node_index] = true ;
@@ -832,7 +832,7 @@ public:
     space++ ;
   } // P_Write_in()
 
-  void Parallel_Write(int num_threads, int num_trees, vector<int> buffer_id, int min_size) { // ********************version 5************************
+  void Parallel_Write(int num_threads, int num_trees, vector<int> buffer_id, int min_size) { // ********************version 5************************ wirtting of PIU manners
     // cout << "in parallel write" << endl ;
     vector<int> now_tree_index(num_trees, 0) ;
     // cout << "pass" << endl ;
@@ -840,7 +840,7 @@ public:
     int time = 0 ;
     bool need_to_plus = true, out = false ;
 
-    if ( min_size == 0 )
+    if ( min_size == 0 ) // didn't satisfy basic writing unit size
       return ;
       
     while ( iteration > 0 ) {
@@ -1038,7 +1038,7 @@ public:
     } // while
   } // Parallel_Write() */
 
-  void Parallel_Read( double num, int index, int num_threads ) {
+  void Parallel_Read( double num, int index, int num_threads ) { // reading in PIU manner
     bool out = false ;
     Node anode ;
     int count, tree_scope, a_t = 0 ;
@@ -1095,7 +1095,7 @@ public:
         ap_access_time[tree_scope][j]++ ;
   } // Paraller_Read()
 
-  void Level_Tree_Read( double num, int index ) {
+  void Level_Tree_Read( double num, int index ) { // nou use
     bool out = false ;
     int count ;
     shift_count = 0 ;
