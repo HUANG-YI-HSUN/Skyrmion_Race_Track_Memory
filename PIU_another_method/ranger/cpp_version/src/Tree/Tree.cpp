@@ -177,7 +177,7 @@ void Tree::grow(std::vector<double>* variable_importance, int limit, int &total_
     //cout << "-------------Start splitNode.-----------" << endl ;
     bool is_terminal_node = splitNode(i);
     if (is_terminal_node && i > limit)                           // Swap
-      Swap(limit) ;                                              // Swap (Parallel version)
+      Swap(limit) ;                                              // Swap (Parallel version) for better placement.
     // cout << "-------------End splitNode.-------------" << endl ;
     if (is_terminal_node) {
       --num_open_nodes;
@@ -395,7 +395,7 @@ bool Tree::splitNode(size_t nodeID) {
   // Create child nodes
   size_t left_child_nodeID = split_varIDs.size();
   node_info anode ;
-  anode.node_index = left_child_nodeID ;
+  anode.node_index = left_child_nodeID ; // record this node is left child of root
   anode.parent = nodeID ;
   // cout << "Left child nodeID: " << left_child_nodeID << endl ;
   child_nodeIDs[0][nodeID] = left_child_nodeID;
@@ -404,7 +404,7 @@ bool Tree::splitNode(size_t nodeID) {
 
   size_t right_child_nodeID = split_varIDs.size();
   node_info anode2 ;
-  anode2.node_index = right_child_nodeID ;
+  anode2.node_index = right_child_nodeID ; // record this node is right child of root
   anode2.parent = nodeID ;
   // cout << "Right child nodeID: " << right_child_nodeID << endl ;
   child_nodeIDs[1][nodeID] = right_child_nodeID;
@@ -437,10 +437,11 @@ bool Tree::splitNode(size_t nodeID) {
       }
     }
     anode.weight = l_count ;
-    node_list.push_back(anode) ;
+    node_list.push_back(anode) ; // Pushing the node into tle list.
     anode2.weight = r_count ;
-    node_list.push_back(anode2) ;
+    node_list.push_back(anode2) ; // Pushing the node into the list.
   } else {
+    // In this research, we dont't need this part.
     cout << "***********************In ELSE***********************" << endl ;
     // Unordered: If bit at position is 1 -> right, 0 -> left
     size_t pos = start_pos[nodeID];

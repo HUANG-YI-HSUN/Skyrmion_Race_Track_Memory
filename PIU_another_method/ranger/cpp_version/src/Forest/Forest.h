@@ -788,7 +788,7 @@ public:
 
   vector<vector<Node>> address_table ;
 
-  bool Check(int pos) {
+  bool Check(int pos) { // debug function
     if ( pos < 0 )
       return false ;
 
@@ -1095,7 +1095,7 @@ public:
         ap_access_time[tree_scope][j]++ ;
   } // Paraller_Read()
 
-  void Level_Tree_Read( double num, int index ) { // nou use
+  void Level_Tree_Read( double num, int index ) { // no use
     bool out = false ;
     int count ;
     shift_count = 0 ;

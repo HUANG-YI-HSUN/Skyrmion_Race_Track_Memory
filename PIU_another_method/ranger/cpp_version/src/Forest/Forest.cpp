@@ -333,7 +333,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
       } // for
     } // for
 
-    for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) {
+    for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) { // Calculate collection information
       sort(skr.parallel_prenode[i].begin(), skr.parallel_prenode[i].end()) ;
       sort(skr.ap_access_time[i].begin(), skr.ap_access_time[i].end()) ;
       if ( skr.SS.find(i) != skr.SS.end() ) {
@@ -351,16 +351,16 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     latency.resize(num_threads) ;
 
     for ( int i = 0 ; i < num_threads ; i++ ) {
-      latency[i] = (skr.thread_read_shift_count[i] * 0.5) + (skr.thread_access_time[i] * 0.1) ;
+      latency[i] = (skr.thread_read_shift_count[i] * 0.5) + (skr.thread_access_time[i] * 0.1) ; // According to the latency consumption of Sky-RM, shifting needs 0.5 ns and reading needs 0.1 ns.
       total_access+=skr.thread_access_time[i] ;
       total_reading+=skr.thread_read_shift_count[i] ;
     } // for
     
-    sort(latency.begin(), latency.end()) ;
+    sort(latency.begin(), latency.end()) ; // Select the highest latency
     skr.BacktoRoot() ;
 
     long long int total_access_time = 0, energy_total_access_time = 0 ;
-    for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) {
+    for ( int i = 0 ; i < skr.parallel_prenode.size() ; i++ ) { // Starting to calculate the total access time and energy consumption.
       for ( int j = 0 ; j < skr.ap_access_time[i].size() ; j++ )
         energy_total_access_time+=skr.ap_access_time[i][j] ;
 
@@ -371,7 +371,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     } // for
     skr.BacktoRoot() ;
 
-    long long int llatency = ((long long int)total_access_time * 0.1) + ((long long int)skr.total_reading_shift_distance*0.5) ; // show the result.
+    long long int llatency = ((long long int)total_access_time * 0.1) + ((long long int)skr.total_reading_shift_distance*0.5) ; // Show the result.
     cout << "Total track count: " << skr.parallel_memory.size() + skr.memory.size() << endl ;
     cout << "Total access time: " << energy_total_access_time + total_access << endl ;
     cout << "Total reading shifting count: " << skr.total_reading_shift_distance + total_reading << endl ;
@@ -525,7 +525,7 @@ int total_thread ;
 void Forest::grow() {
   // -----------------------------------------------------------below are my own code-----------------------------------------------------------
   string temp = "" ;
-  skr.buffersize = 100000 ; // ( batch_size * tree_size ) / 2
+  skr.buffersize = 100000 ; // The size is based on the average deciosion trees' size.
   skr.NLF_Mode = false ;
   
   int wordnums, access_port_nums ;
@@ -702,19 +702,19 @@ void Forest::grow() {
     } // if
     else if ( trees[j]->returnSplitValueSize() == skr.buffer[j].size() ) {
       // trees[j] -> InstanceSort(skr.buffer[j]) ; // Local optimize
-      min_size = min_size > skr.buffer[j].size() ? skr.buffer[j].size() : min_size ;
+      min_size = min_size > skr.buffer[j].size() ? skr.buffer[j].size() : min_size ; // Find the minimum size that satisfys basic writing unit.
       buffer_id.push_back(j) ;
     } // else if
   } // for
 
-  min_size = min_size / (skr.ap_nums / num_threads * skr.word_nums) ; 
-  min_size = min_size * (skr.ap_nums / num_threads * skr.word_nums) ;
-  skr.Parallel_Write(num_threads, num_trees, buffer_id, min_size) ; 
+  min_size = min_size / (skr.ap_nums / num_threads * skr.word_nums) ; // Find the minimum size that satisfys basic writing unit.
+  min_size = min_size * (skr.ap_nums / num_threads * skr.word_nums) ; // Find the minimum size that satisfys basic writing unit.
+  skr.Parallel_Write(num_threads, num_trees, buffer_id, min_size) ; // Writing into race track.
   skr.p_unit_limit = skr.parallel_total_track-1 ;
   skr.P_Addtrack() ;
   skr.p_track_shift.push_back(0) ;
   
-  for ( int i = 0 ; i < skr.buffer.size() ; i++ ) {
+  for ( int i = 0 ; i < skr.buffer.size() ; i++ ) { // Free the space.
     if ( !skr.buffer[i].empty() ) {
       skr.Level_Tree_Write(skr.buffer[i], i) ;
       skr.buffer[i].clear() ;
@@ -735,7 +735,6 @@ void Forest::grow() {
   cout << "-------------------------Writing Energy---------------------------" << endl ;
   cout << skr.shift_count * 20 + total_tree_node * 200 << endl ;
   cout << endl << endl ;
-
   // -----------------------------------------------------------------above are my own code-----------------------------------------------------------
 }
 
@@ -973,7 +972,7 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
           trees[i]->WriteInShowUp(skr.buffer[i], index) ;
           index++ ;
         } // if
-        else {
+        else { // Writing into race track.
           std::unique_lock<std::mutex> lock(mutex);
           if ( skr.returnBufferSize() >= skr.buffersize ) {
             vector<int> buffer_id ;
