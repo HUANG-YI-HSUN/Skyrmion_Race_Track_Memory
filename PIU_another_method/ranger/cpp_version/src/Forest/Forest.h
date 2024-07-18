@@ -525,7 +525,7 @@ public:
     P_BacktoRoot(false) ;
   } // Parallel_Write() */
 
-  void LLevel_Tree_Write( vector<double> input, int index, int size ) { // PIU write
+  void LLevel_Tree_Write( vector<double> input, int index, int size ) { // POU write
     int remainder ;
     tree_scope[index].push_back(total_track-1) ;
 
@@ -555,7 +555,7 @@ public:
     BacktoRoot() ;
   } // LLevel_Tree_Write
 
-  void LLevel_Tree_Read( double num, int index, int &s_c ) { // PIU read
+  void LLevel_Tree_Read( double num, int index, int &s_c ) { // POU read
     bool out = false ;
     int count ;
     s_c = 0 ;
@@ -623,7 +623,7 @@ public:
     return false ;
   } // CheckWordLine()
 
-  void Level_Tree_Write( vector<Tree::node_info> input, int index ) { // parallel unit write in POU manner
+  void Level_Tree_Write( vector<Tree::node_info> input, int index ) { // Write into the track that deals with non parallel track.
     int count ;
     bool out = false ;
     // tree_scope[index].push_back(total_track-1) ;

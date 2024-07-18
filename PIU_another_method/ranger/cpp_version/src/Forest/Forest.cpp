@@ -951,7 +951,7 @@ void Forest::computePermutationImportance() {
 
 #ifndef OLD_WIN_R_BUILD
 void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_importance) {
-  int threshold1 = num_trees / num_threads, done_tree = 1 ;
+  int threshold1 = num_trees / num_threads, done_tree = 1 ; // threshold1: The trheshold that determine whether this tree is written in POU or not.
   if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i, done_tree++) {
       // -------------------------------------------below are my own code------------------------------------------------------
