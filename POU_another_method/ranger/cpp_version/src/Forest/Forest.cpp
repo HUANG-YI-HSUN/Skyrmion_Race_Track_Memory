@@ -316,7 +316,7 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     long long int total_access = 0, total_reading = 0 ;
     latency.resize(num_threads) ;
 
-    for ( int i = 0 ; i < num_threads ; i++ ) {
+    for ( int i = 0 ; i < num_threads ; i++ ) { // Calculte the latency and energy consumption.
       latency[i] = (skr.thread_read_shift_count[i] * 0.5) + (skr.thread_access_time[i] * 0.1) ;
       total_access+=skr.thread_access_time[i] ;
       total_reading+=skr.thread_read_shift_count[i] ;
@@ -343,38 +343,6 @@ void Forest::run(bool verbose, bool compute_oob_error) {
     }
   }
 }
-
-/* 
-   for ( int i = 0 ; i < num_trees ; i++ ) {
-      trees[i]->LaRF_sort(searchList[i], buffer[i]) ;
-      for ( int j = 0 ; j < buffer.size() ; j++ ) {
-        if ( !buffer[j].empty() ) {
-          Addtrack() ;
-          Level_Tree_Write(buffer[i], i, -1, trees[i]->returnSplitValueSize()) ;
-          buffer[j].clear() ;
-        } // if
-      } // for
-    } // for // -------------------------------------LaRF code----------------------------------------------
-
-
-    cout << "-------------------------Print Shift-----------------------------" << endl ;
-    PrintSfift() ;
-    cout << "-------------------------Print Race Track------------------------" << endl ;
-    Print() ;
-    cout << "-------------------------Print Buffer----------------------------" << endl ;
-    printTBuffer() ;
-    // cout << endl ;
-    cout << "----------------------Print Tree Scope---------------------------" << endl ;
-    for ( int i = 0 ; i < tree_scope.size() ; i++ ) {
-      cout << "tree" << i+1 << "'s scope: " ;
-      for ( int j = 0 ; j < tree_scope[i].size() ; j++ ) {
-        cout << tree_scope[i][j] ;
-
-        if ( j != tree_scope[i].size()-1 )
-          cout << ", " ;
-      } // for
-      cout << endl ;
-    } // for */ // -------------------------------------LaRF code----------------------------------------------
 
 // #nocov start
 void Forest::writeOutput() {
@@ -890,15 +858,14 @@ void Forest::growTreesInThread(uint thread_idx, std::vector<double>* variable_im
       trees[i]->grow(variable_importance);
       int index = 0, node_size = trees[i]->returnSplitValueSize(), track_size = skr.memory[0].size() ;
       int limit = skr.buffersize / num_threads ;
-      while ( index < node_size ) {
+      while ( index < node_size ) { // Write the nodes into the buffer.
         // cout << skr.returnBufferSize() << endl ;
         if ( skr.returnBufferSize() < skr.buffersize && (skr.buffer[i].size() < limit || total_thread < num_threads ) ) {
           trees[i]->WriteInShowUp(skr.buffer[i], index) ;
           index++ ;
         } // if
-        else {
+        else { // Write the nodes into the race track.
           std::unique_lock<std::mutex> lock(mutex);
-          // cout << "-------------------Buffer is Full ---------------------" << endl ;
           // printBuffer() ;
           int size = skr.ap_nums * skr.word_nums ;
           if ( skr.returnBufferSize() >= skr.buffersize ) {
@@ -937,9 +904,10 @@ void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, 
   if (thread_ranges.size() > thread_idx + 1) {
     for (size_t i = thread_ranges[thread_idx]; i < thread_ranges[thread_idx + 1]; ++i) {
       trees[i]->predict(prediction_data, oob_prediction, skr.searchList[i]);
+      // -----------------------------------------------below are my own code-------------------------------------------------
       for ( int j = 0 ; j < skr.searchList[i].size() ; j++ ) {
         int s_c = 0 ;
-        for ( int k = 0 ; k < skr.searchList[i][j].size() ; k++ ) {
+        for ( int k = 0 ; k < skr.searchList[i][j].size() ; k++ ) { // Finding the node in race track.
           skr.Level_Tree_Read( skr.searchList[i][j][k], i, s_c ) ;
           skr.total_reading_shift_distance+=s_c ;
           skr.thread_read_shift_count[thread_idx]+=s_c ;
@@ -951,7 +919,7 @@ void Forest::predictTreesInThread(uint thread_idx, const Data* prediction_data, 
         skr.total_reading_shift_distance+=s_c ;
         skr.thread_read_shift_count[thread_idx]+=s_c ;
       } // for
-
+      // -----------------------------------------------end of my code-------------------------------------------------
       // Check for user interrupt
 #ifdef R_BUILD
       if (aborted) {

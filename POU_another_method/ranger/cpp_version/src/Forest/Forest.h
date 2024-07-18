@@ -514,7 +514,7 @@ public:
     P_BacktoRoot(false) ;
   } // Parallel_Write() */
 
-  void Parallel_Write(int num_threads) { // ********************version 2************************
+  void Parallel_Write(int num_threads) { // ********************version 2************************ // Write into the race track that deals with parallel placement. 
     vector<int> now_tree_index(parallel_writing_buffer.size(), 0) ;
     int a_group_of_ap = ap_nums / num_threads, now_tree = 0, iteration = parallel_writing_buffer.size() ;
     int last = parallel_writing_buffer.size()-1, time = 0 ;
@@ -647,7 +647,7 @@ public:
     return shift_count ;
   } // Paraller_Read() */
 
-  void Parallel_Read( double num, int index, int num_threads ) {
+  void Parallel_Read( double num, int index, int num_threads ) { // Reading from the race track that deals with parallel placement.
     bool out = false ;
     int count, tree_scope = p_tree_scope[index] + ( num / PR_placement_limit ), a_t = 0 ;
     shift_count = 0 ;
@@ -688,7 +688,7 @@ public:
 
   vector<vector<Node>> address_table ;
 
-  void Level_Tree_Write( vector<double> input, int index, int size ) {
+  void Level_Tree_Write( vector<double> input, int index, int size ) { // Write into the track that deals with non parallel track.
     int remainder ;
     tree_scope[index].push_back(total_track-1) ;
 
@@ -718,7 +718,7 @@ public:
     BacktoRoot() ;
   } // Level_Tree_Write
 
-  void Level_Tree_Read( double num, int index, int &s_c ) {
+  void Level_Tree_Read( double num, int index, int &s_c ) { // Read the from the track that deals with sequential read.
     bool out = false ;
     int count ;
     s_c = 0 ;
